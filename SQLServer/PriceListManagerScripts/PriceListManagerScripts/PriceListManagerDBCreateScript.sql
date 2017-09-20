@@ -1072,7 +1072,7 @@ AS
 BEGIN
     DECLARE @userID INT;
     DECLARE @accountDeactivated INT;
-    DECLARE @passwordHash VARCHAR(256);
+--    DECLARE @passwordHash VARCHAR(256);
 
     SELECT
         @userID = SystemUserID,
@@ -1089,6 +1089,24 @@ BEGIN
     
 
 END;
+GO
+
+------
+-- Select all suppliers
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[GetSuppliers]
+AS
+BEGIN
+    SELECT
+        SupplierID,
+        UniqueID,
+        Code,
+        Descr,
+        AddressDetail
+    FROM
+        [Suppliers].[Supplier]
+END;
+GO
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Data Initialisation
