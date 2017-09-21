@@ -45,6 +45,8 @@ GO
 CREATE SCHEMA Products;
 GO
 
+CREATE SCHEMA Shared;
+GO
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Users of the database
@@ -96,6 +98,14 @@ EXEC sp_addrolemember 'db_datawriter', 'CDInfoSysServiceUser';
 GO
 
 ------------------------------------------------------------------------------------------------------------------------
+-- User defined types
+------------------------------------------------------------------------------------------------------------------------
+
+-- A table of GUIDs
+CREATE TYPE [Shared].[GuidTable] AS TABLE (identifier UNIQUEIDENTIFIER);
+GO
+
+------------------------------------------------------------------------------------------------------------------------
 -- Support Tables
 ------------------------------------------------------------------------------------------------------------------------
 CREATE TABLE Support.SchemaVersion
@@ -121,7 +131,7 @@ GO
 ------------------------------------------------------------------------------------------------------------------------
 CREATE TABLE UserControl.SystemUser
 (
-    SystemUserID INT NOT NULL,
+    SystemUserID INT IDENTITY(1, 1) NOT NULL,
     UniqueID UNIQUEIDENTIFIER NOT NULL,
     LastUpdateTime DATETIME2 NOT NULL,
     UserName VARCHAR(100) NOT NULL,
@@ -193,7 +203,7 @@ GO
 
 CREATE TABLE UserControl.UserSession
 (
-    UserSessionID INT NOT NULL,
+    UserSessionID INT IDENTITY(1, 1) NOT NULL,
     SystemUserID INT NOT NULL,
     SessionExpiryTime DATETIME2 NULL,
     SessionToken VARCHAR(80) NOT NULL
@@ -215,7 +225,7 @@ GO
 
 CREATE TABLE UserControl.UserGroup
 (
-    UserGroupID INT NOT NULL,
+    UserGroupID INT IDENTITY(1, 1) NOT NULL,
     LastUpdateTime DATETIME2 NOT NULL,
     SystemUserID INT NOT NULL,
     SystemGroupID INT NOT NULL
@@ -244,7 +254,7 @@ GO
 
 CREATE TABLE UserControl.UserRight
 (
-    UserRightID INT NOT NULL,
+    UserRightID INT IDENTITY(1, 1) NOT NULL,
     LastUpdateTime DATETIME2 NOT NULL,
     SystemUserID INT NOT NULL,
     AccessRightID INT NOT NULL,
@@ -305,7 +315,7 @@ GO
 
 CREATE TABLE Suppliers.Supplier
 (
-    SupplierID INT NOT NULL,
+    SupplierID INT IDENTITY(1, 1) NOT NULL,
     UniqueID UNIQUEIDENTIFIER NOT NULL,
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(80) NOT NULL,
@@ -333,7 +343,7 @@ GO
 
 CREATE TABLE Suppliers.SupplierArchive
 (
-    SupplierArchiveID INT NOT NULL,
+    SupplierArchiveID INT IDENTITY(1, 1) NOT NULL,
     SupplierID INT NOT NULL,
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(100) NOT NULL,
@@ -368,7 +378,7 @@ GO
 ------------------------------------------------------------------------------------------------------------------------
 CREATE TABLE Products.Product
 (
-    ProductID INT NOT NULL,
+    ProductID INT IDENTITY(1, 1) NOT NULL,
     UniqueID UNIQUEIDENTIFIER NOT NULL,
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(100) NOT NULL,
@@ -396,7 +406,7 @@ GO
 
 CREATE TABLE Products.ProductArchive
 (
-    ProductArchiveID INT NOT NULL,
+    ProductArchiveID INT IDENTITY(1, 1) NOT NULL,
     ProductID INT NOT NULL,
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(100) NOT NULL,
@@ -428,7 +438,7 @@ GO
 
 CREATE TABLE Products.ProductComponent
 (
-    ProductComponentID INT NOT NULL,
+    ProductComponentID INT IDENTITY(1, 1) NOT NULL,
     UniqueID UNIQUEIDENTIFIER NOT NULL,
     FinishedProductID INT NOT NULL,
     ComponentProductID INT NOT NULL,
@@ -465,7 +475,7 @@ GO
 
 CREATE TABLE Products.ProductComponentArchive
 (
-    ProductComponentArchiveID INT NOT NULL,
+    ProductComponentArchiveID INT IDENTITY(1, 1) NOT NULL,
     ProductComponentID INT NOT NULL,
     FinishedProductID INT NOT NULL,
     ComponentProductID INT NOT NULL,
@@ -509,7 +519,7 @@ GO
 ------------------------------------------------------------------------------------------------------------------------
 CREATE TABLE Locations.Location
 (
-    LocationID INT NOT NULL,
+    LocationID INT IDENTITY(1, 1) NOT NULL,
     UniqueID UNIQUEIDENTIFIER NOT NULL,
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(100) NOT NULL,
@@ -537,7 +547,7 @@ GO
 
 CREATE TABLE Locations.LocationArchive
 (
-    LocationArchiveID INT NOT NULL,
+    LocationArchiveID INT IDENTITY(1, 1) NOT NULL,
     LocationID INT NOT NULL,
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(100) NOT NULL,
@@ -573,7 +583,7 @@ GO
 
 CREATE TABLE Linking.SupplierProduct
 (
-    SupplierProductID INT NOT NULL,
+    SupplierProductID INT IDENTITY(1, 1) NOT NULL,
     SupplierID INT NOT NULL,
     ProductID INT NOT NULL,
     LastUpdateTime DATETIME2 NOT NULL,
@@ -606,7 +616,7 @@ GO
 
 CREATE TABLE Linking.SupplierProductArchive
 (
-    SupplierProductArchiveID INT NOT NULL,
+    SupplierProductArchiveID INT IDENTITY(1, 1) NOT NULL,
     SupplierProductID INT NOT NULL,
     SupplierID INT NOT NULL,
     ProductID INT NOT NULL,
@@ -648,7 +658,7 @@ GO
 
 CREATE TABLE Linking.LocationProduct
 (
-    LocationProductID INT NOT NULL,
+    LocationProductID INT IDENTITY(1, 1) NOT NULL,
     LocationID INT NOT NULL,
     ProductID INT NOT NULL,
     LastUpdateTime DATETIME2 NOT NULL,
@@ -681,7 +691,7 @@ GO
 
 CREATE TABLE Linking.LocationProductArchive
 (
-    LocationProductArchiveID INT NOT NULL,
+    LocationProductArchiveID INT IDENTITY(1, 1) NOT NULL,
     LocationProductID INT NOT NULL,
     LocationID INT NOT NULL,
     ProductID INT NOT NULL,
@@ -723,7 +733,7 @@ GO
 
 CREATE TABLE Linking.ProductSellingPrice
 (
-    ProductSellingPriceID INT NOT NULL,
+    ProductSellingPriceID INT IDENTITY(1, 1) NOT NULL,
     LocationProductID INT NOT NULL,
     SellingPrice NUMERIC (12, 5),
     LastUpdateTime DATETIME2 NOT NULL,
@@ -750,7 +760,7 @@ GO
 
 CREATE TABLE Linking.ProductSellingPriceArchive
 (
-    ProductSellingPriceArchiveID INT NOT NULL,
+    ProductSellingPriceArchiveID INT IDENTITY(1, 1) NOT NULL,
     ProductSellingPriceID INT NOT NULL,
     LocationProductID INT NOT NULL,
     SellingPrice NUMERIC (12, 5),
@@ -786,7 +796,7 @@ GO
 
 CREATE TABLE Linking.ProductPurchasePrice
 (
-    ProductPurchasePriceID INT NOT NULL,
+    ProductPurchasePriceID INT IDENTITY(1, 1) NOT NULL,
     SupplierProductID INT NOT NULL,
     PurchaseDate DATETIME2 NOT NULL,
     PurchasePrice NUMERIC (12, 5) NOT NULL,
@@ -1108,6 +1118,143 @@ BEGIN
 END;
 GO
 
+------
+-- Get supplier records for the items identified in the identifiersList table parameter
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[GetSuppliersWithIdentifiers]
+    @identifiersList AS [Shared].[GuidTable] READONLY
+AS
+BEGIN
+    SELECT
+        SupplierID,
+        UniqueID,
+        Code,
+        Descr,
+        AddressDetail,
+        LastUpdateTime,
+        SystemUserID
+    FROM
+        [Suppliers].[Supplier] S
+        INNER JOIN
+            @identifiersList IL
+            ON
+                IL.identifier = S.UniqueID
+END;
+GO
+
+------
+-- Add a new supplier record
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[AddSupplier]
+(
+    @code AS VARCHAR(50),
+    @descr AS VARCHAR(80),
+    @addressDetail AS VARCHAR(200),
+    @systemUserID AS INT
+)
+AS
+BEGIN
+    -- Table variable to receive inserted record identifiers
+    DECLARE @insertedRec AS TABLE
+    (
+        SupplierID INT,
+        UniqueID UNIQUEIDENTIFIER
+    );
+
+    INSERT INTO
+        [Suppliers].[Supplier]
+        (
+            UniqueID,
+            Code,
+            Descr,
+            AddressDetail,
+            LastUpdateTime,
+            SystemUserID
+        )
+    OUTPUT
+        inserted.SupplierID, 
+        inserted.UniqueID 
+        INTO 
+            @insertedRec(SupplierID, UniqueID)
+    VALUES
+        (
+            NEWID(),
+            @code,
+            @descr,
+            @addressDetail,
+            SYSUTCDATETIME(),
+            @systemUserID
+        );
+
+    -- Return the identifiers for the new record.
+    SELECT SupplierID, UniqueID FROM @insertedRec;
+END;
+GO
+
+------
+-- Update a supplier record
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[UpdateSupplier]
+(
+    @supplierID AS INT,
+    @code AS VARCHAR(50),
+    @descr AS VARCHAR(80),
+    @addressDetail AS VARCHAR(200),
+    @recordUpdatedTime DATETIME2,
+    @systemUserID AS INT
+)
+AS
+BEGIN
+    DECLARE @actionCode INT;
+
+    -- Check if a record with a newer update time exists. If so, do not update the existing record but return
+    -- the existing data.
+    IF EXISTS
+    (
+        SELECT TOP 1 1 
+        FROM 
+            [Suppliers].[Supplier] 
+        WHERE 
+            SupplierID = @supplierID AND 
+            LastUpdateTime >= @recordUpdatedTime
+    )
+    BEGIN
+        -- Indicate returning other data
+        SET @actionCode = 1;
+    END
+    ELSE
+    BEGIN
+        UPDATE 
+            [Suppliers].[Supplier]
+        SET
+            Code = @code,
+            Descr = @descr,
+            AddressDetail = @addressDetail,
+            LastUpdateTime = SYSUTCDATETIME(),
+            SystemUserID = @systemUserID
+        WHERE
+            SupplierID = @supplierID
+
+        -- Indicate update
+        SET @actionCode = 2;
+    END
+
+    SELECT
+        @actionCode AS ActionCode,
+        SupplierID,
+        UniqueID,
+        Code,
+        Descr,
+        AddressDetail,
+        LastUpdateTime,
+        SystemUserID
+    FROM
+        [Suppliers].[Supplier]
+    WHERE
+        SupplierID = @supplierID
+END;
+GO
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Data Initialisation
 ------------------------------------------------------------------------------------------------------------------------
@@ -1117,7 +1264,8 @@ GO
 INSERT INTO Support.ExceptionCode(ExceptionCodeID, Descr) 
 VALUES
     (100000, 'User name not found'),
-    (100001, 'Account is deactivated')
+    (100001, 'Account is deactivated'),
+    (100002, 'Concurrent record update')
 ;
 GO
 
@@ -1235,4 +1383,39 @@ VALUES
     (     402, SYSUTCDATETIME(),   300,   302),
     (     403, SYSUTCDATETIME(),   300,   303)
 ;
+GO
+
+------
+-- Create a default user
+------
+INSERT INTO [UserControl].[SystemUser]
+(
+    UniqueID,
+    LastUpdateTime,
+    UserName,
+    EmailAddress,
+    ContactNumber,
+    AccountLocked,
+    PasswordHash,
+    PasswordExpiryDate,
+    RequiresLogin,
+    UnsuccessfulLoginAttempts,
+    SessionTimeoutMinutes,
+    Deactivated
+)
+VALUES
+(
+    NEWID(), 
+    SYSUTCDATETIME(),
+    'DefaultUser',
+    'defaultuser@example.com',
+    '(123)456-7890',
+    0,
+    '',
+    '9999-12-31 23:59:59',
+    0,
+    0,
+    999999999,
+    0
+);
 GO
