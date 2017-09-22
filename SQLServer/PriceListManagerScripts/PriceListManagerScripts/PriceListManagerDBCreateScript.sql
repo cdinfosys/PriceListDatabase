@@ -320,6 +320,7 @@ CREATE TABLE Suppliers.Supplier
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(80) NOT NULL,
     AddressDetail VARCHAR(200) NULL,
+    Retired INT NULL,
     LastUpdateTime DATETIME2 NOT NULL,
     SystemUserID INT NOT NULL
 );
@@ -348,6 +349,7 @@ CREATE TABLE Suppliers.SupplierArchive
     Code VARCHAR(50) NOT NULL,
     Descr VARCHAR(100) NOT NULL,
     AddressDetail VARCHAR(200) NULL,
+    Retired INT NULL,
     ArchivedTime DATETIME2 NOT NULL,
     SystemUserID INT NOT NULL,
     PreviousUpdateTime DATETIME2 NOT NULL,
@@ -1102,7 +1104,7 @@ END;
 GO
 
 ------
--- Select all suppliers
+-- Select all active suppliers
 ------
 CREATE OR ALTER PROCEDURE [Suppliers].[GetSuppliers]
 AS
@@ -1112,9 +1114,56 @@ BEGIN
         UniqueID,
         Code,
         Descr,
-        AddressDetail
+        AddressDetail,
+        LastUpdateTime
     FROM
         [Suppliers].[Supplier]
+    WHERE
+        ISNULL(Retired, 0) != 1
+END;
+GO
+
+------
+-- Select all suppliers, including deleted ones.
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[GetAllSuppliers]
+AS
+BEGIN
+    SELECT
+        SupplierID,
+        UniqueID,
+        Code,
+        Descr,
+        AddressDetail,
+        Retired,
+        LastUpdateTime
+    FROM
+        [Suppliers].[Supplier]
+END;
+GO
+
+CREATE OR ALTER PROCEDURE [Suppliers].[GetSupplierHistory] (@supplierID INT)
+AS
+BEGIN
+    SELECT
+        SA.SupplierID,
+        S.UniqueID,
+        SA.Code,
+        SA.Descr,
+        SA.AddressDetail,
+        SA.Retired,
+        SA.ArchivedTime,
+        SA.SystemUserID,
+        SA.PreviousUpdateTime,
+        SA.PreviousSystemUserID
+    FROM
+        [Suppliers].[SupplierArchive] SA
+        INNER JOIN
+            [Suppliers].[Supplier] S
+            ON
+                S.SupplierID = SA.SupplierID
+    WHERE
+        SA.SupplierID = @supplierID;
 END;
 GO
 
@@ -1139,6 +1188,46 @@ BEGIN
             @identifiersList IL
             ON
                 IL.identifier = S.UniqueID
+END;
+GO
+
+------
+-- Create an archive copy of a supplier record in the supplier archive table
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[CreateSupplierArchiveCopy]
+(
+    @supplierID INT,
+    @systemUserID INT
+)
+AS
+BEGIN
+    INSERT INTO
+        [Suppliers].[SupplierArchive]
+        (
+            SupplierID,
+            Code,
+            Descr,
+            AddressDetail,
+            Retired,
+            ArchivedTime,
+            SystemUserID,
+            PreviousUpdateTime,
+            PreviousSystemUserID
+        )
+    SELECT
+        SupplierID,
+        Code,
+        Descr,
+        AddressDetail,
+        Retired,
+        SYSUTCDATETIME(),
+        @systemUserID,
+        LastUpdateTime,
+        SystemUserID
+    FROM
+        [Suppliers].[Supplier]
+    WHERE
+        SupplierID = @supplierID
 END;
 GO
 
@@ -1224,6 +1313,10 @@ BEGIN
     END
     ELSE
     BEGIN
+        -- Create a copy of the record in the archive table
+        EXEC [Suppliers].[CreateSupplierArchiveCopy] @supplierID, @systemUserID;
+
+        -- Update the new record.
         UPDATE 
             [Suppliers].[Supplier]
         SET
@@ -1246,6 +1339,75 @@ BEGIN
         Code,
         Descr,
         AddressDetail,
+        Retired,
+        LastUpdateTime,
+        SystemUserID
+    FROM
+        [Suppliers].[Supplier]
+    WHERE
+        SupplierID = @supplierID
+END;
+GO
+
+------
+-- Mark a supplier as retired
+------
+CREATE OR ALTER PROCEDURE [Suppliers].[RetireSupplier]
+(
+    @supplierID AS INT,
+    @retiredState AS INT,
+    @recordUpdatedTime DATETIME2,
+    @systemUserID AS INT
+)
+AS
+BEGIN
+    DECLARE @actionCode INT;
+
+    -- Check if a record with a newer update time exists. If so, do not update the existing record but return
+    -- the existing data.
+    IF EXISTS
+    (
+        SELECT TOP 1 1 
+        FROM 
+            [Suppliers].[Supplier] 
+        WHERE 
+            SupplierID = @supplierID AND 
+            LastUpdateTime >= @recordUpdatedTime
+    )
+    BEGIN
+        -- Indicate returning other data
+        SET @actionCode = 1;
+    END
+    ELSE
+    BEGIN
+        -- Create a copy of the record in the archive table
+        EXEC [Suppliers].[CreateSupplierArchiveCopy] @supplierID, @systemUserID;
+
+        -- Update the new record.
+        UPDATE 
+            [Suppliers].[Supplier]
+        SET
+            Retired = CASE @retiredState
+                WHEN 1 THEN 1
+                ELSE 0
+            END,
+            LastUpdateTime = SYSUTCDATETIME(),
+            SystemUserID = @systemUserID
+        WHERE
+            SupplierID = @supplierID
+
+        -- Indicate update
+        SET @actionCode = 2;
+    END
+
+    SELECT
+        @actionCode AS ActionCode,
+        SupplierID,
+        UniqueID,
+        Code,
+        Descr,
+        AddressDetail,
+        Retired,
         LastUpdateTime,
         SystemUserID
     FROM
